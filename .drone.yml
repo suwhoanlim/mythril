@@ -1,0 +1,41 @@
+kind: pipeline
+name: default
+
+platform:
+    os: linux
+    arch: amd64
+
+steps:
+- name: edelweiss_swc
+  image: mythx.azurecr.io/tools/edelweiss
+  environment:
+    IGNORE_FALSE_POSITIVES: guess_the_random_number.sol
+    IGNORE_REGRESSIONS: true
+    AWS_DEFAULT_REGION:
+        from_secret: AWS_DEFAULT_REGION
+    AWS_ACCESS_KEY_ID:
+        from_secret: AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_SECRET_ACCESS_KEY
+    MONGO_URL:
+        from_secret: MONGO_URL
+  commands:
+    - export CIRCLE_BUILD_NUM=$DRONE_BUILD_NUMBER
+    - export CIRCLE_BUILD_URL=$DRONE_BUILD_LINK
+    - export CIRCLE_BRANCH=$DRONE_BRANCH
+    - export CIRCLE_SHA1=$DRONE_COMMIT_SHA
+    - npm install --unsafe-perm -g .
+    - cd /edelweiss
+    - git submodule update --init --recursive
+    - git submodule update --remote --recursive
+    - edelweiss-cli 
+      --timeout 90 
+      --output-dir /opt/edelweiss 
+      --s3 
+      --dynamodb 
+      --circle-ci CircleCI/mythril.csv 
+      --ignore-false-positives $IGNORE_FALSE_POSITIVES 
+      --ignore-regressions $IGNORE_REGRESSIONS
+
+image_pull_secrets:
+    - DOCKER_CONFIG_JSON
